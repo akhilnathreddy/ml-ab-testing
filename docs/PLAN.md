@@ -110,12 +110,12 @@ Effect sizes: mean difference, 95% CI (with corrected variance), and Cohen's d_z
 | # | Milestone | Status |
 |---|---|---|
 | M0 | Plan, repo scaffold, documentation skeleton | ✅ |
-| M1 | Data download + validation + EDA | ⏳ |
-| M2 | Models and metrics, CV engine | ⏳ |
-| M3 | Statistical tests + unit tests (incl. cross-check vs `mlxtend`) | ⏳ |
-| M4 | Full experiment run, results tables, figures | ⏳ |
-| M5 | Report (README), methodology, blog draft, executed notebook | ⏳ |
-| M6 | Review, merge to `main`, push | ⏳ |
+| M1 | Data download + validation + EDA | ✅ |
+| M2 | Models and metrics, CV engine | ✅ |
+| M3 | Statistical tests + unit tests (incl. cross-check vs `mlxtend`) | ✅ |
+| M4 | Full experiment run, results tables, figures | ✅ |
+| M5 | Report (README), methodology, blog draft, executed notebook | ✅ |
+| M6 | Review, merge to `main`, push | ✅ |
 
 ## 9. Known limitations (to discuss in the report)
 

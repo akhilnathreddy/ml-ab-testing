@@ -167,8 +167,8 @@ def fig_pvalues(res) -> None:
         ax.scatter(t[col].clip(lower=1e-16), y, color=color, marker=marker, s=46, zorder=3,
                    label=label)
     ax.axvline(config.ALPHA, color="#d03b3b", lw=1.2, ls="--")
-    ax.text(config.ALPHA * 0.85, len(t) - 0.62, "α = 0.05", color="#d03b3b", fontsize=8.5,
-            ha="right", va="bottom")
+    ax.text(config.ALPHA * 0.85, 0.985, "α = 0.05", color="#d03b3b", fontsize=8.5,
+            ha="right", va="top", transform=ax.get_xaxis_transform())
     ax.set_xscale("log")
     ax.set_yticks(range(len(t)), t["comparison"])
     ax.invert_yaxis()

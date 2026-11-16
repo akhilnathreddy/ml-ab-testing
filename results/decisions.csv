@@ -1,4 +1,4 @@
 comparison,mean_diff,ci_low,ci_high,p_holm_corrected,tost_equivalent,decision
-RandomForest vs LogReg,0.00010125023868442828,-0.0032140115095950395,0.003416511986963896,0.9518005212080425,True,Practically equivalent (TOST) → prefer simpler / cheaper model
-LightGBM vs LogReg,0.004261579573305371,0.0004882214225898165,0.008034937724020925,0.05452681269438661,True,Practically equivalent (TOST) → prefer simpler / cheaper model
-LightGBM vs RandomForest,0.004160329334620943,0.0008131307020660039,0.007507527967175882,0.0461185558631918,True,Practically equivalent (TOST) → prefer simpler / cheaper model
+RandomForest vs LogReg,0.00010125023868442828,-0.0032140115095950395,0.003416511986963896,0.9518005212080425,True,Not significant and TOST-equivalent → practically equivalent
+LightGBM vs LogReg,0.004261579573305371,0.0004882214225898165,0.008034937724020925,0.05452681269438661,True,Not significant and TOST-equivalent → practically equivalent
+LightGBM vs RandomForest,0.004160329334620943,0.0008131307020660039,0.007507527967175882,0.0461185558631918,True,"LightGBM is significantly better, but by < MPD and TOST-equivalent → practically equivalent"

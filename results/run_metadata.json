@@ -26,7 +26,7 @@
     "LightGBM": "LightGBM(400 trees, lr=0.05, 31 leaves, subsample=0.8, colsample=0.8)"
   },
   "python": "3.13.18",
-  "runtime_seconds": 460.2,
+  "runtime_seconds": 459.1,
   "versions": {
     "numpy": "2.5.5",
     "pandas": "3.1.1",

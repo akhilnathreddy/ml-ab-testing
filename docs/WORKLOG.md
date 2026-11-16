@@ -73,7 +73,9 @@ TOST-equivalent". The first version labelled both "practically equivalent", whic
 that LightGBM vs RF is statistically significant.
 
 **Reproducibility check:** a second full run from scratch (after the labelling change) produced
-byte-identical CSVs for every fold score, metric and p-value.
+identical values for every fold score, hold-out prediction, metric and p-value (checked
+column-by-column against the committed first run). The only differences are the wall-clock
+`fit_seconds` timings and the reworded decision labels.
 
 ## 2026-11-16 — M5: Figures, report, blog, notebook
 
@@ -85,3 +87,16 @@ byte-identical CSVs for every fold score, metric and p-value.
   for every model), and tick and label collisions were fixed.
 - `README.md` is the full report. `docs/BLOG_POST.md` is a Medium-ready version whose images
   are linked from GitHub raw URLs. `notebooks/analysis.ipynb` is executed against the cached results.
+
+## 2026-11-16 — M6: Review and merge
+
+- Final checks: 16/16 unit tests pass, and the notebook executes end to end with 0 errors (17 code cells).
+  All figures were visually reviewed after the final render.
+- Every number quoted in the README and blog post was cross-checked against `results/*.csv`.
+- `feature/ab-testing-pipeline` was merged into `main` with a merge commit, keeping the step-by-step history.
+
+**Possible next steps**
+- Calibrate LightGBM (isotonic or Platt) and re-test log loss. Its poor calibration is the
+  clearest difference found here.
+- Tune all three arms with nested CV and re-run the same pre-registered test battery.
+- Repeat on more datasets and compare the algorithms with Friedman + Nemenyi tests (Demšar, 2006).

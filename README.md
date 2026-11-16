@@ -147,7 +147,7 @@ Each model was fitted once on the full dev set and scored once on the hold-out s
 
 | Comparison | Only model 1 right | Only model 2 right | McNemar exact p (Holm) | Δ macro F1 | Bootstrap 95% CI | Bootstrap p (Holm) |
 |---|---|---|---|---|---|---|
-| RF vs LogReg | 50 | 51 | 1.000 (1.000) | −0.0000 | [−0.0065, +0.0065] | 0.99 (1.00) |
+| RF vs LogReg | 50 | 51 | 1.000 (1.000) | 0.0000 | [−0.0065, +0.0065] | 0.99 (1.00) |
 | LightGBM vs LogReg | 54 | 64 | 0.407 (0.842) | −0.0017 | [−0.0084, +0.0052] | 0.63 (1.00) |
 | LightGBM vs RF | 23 | 32 | 0.281 (0.842) | −0.0016 | [−0.0063, +0.0030] | 0.49 (1.00) |
 
@@ -225,7 +225,8 @@ make notebook    # executes notebooks/analysis.ipynb against the cached results
 ```
 
 All randomness is seeded (`SEED = 42` in [`src/abtest/config.py`](src/abtest/config.py)). Two
-independent full runs produced byte-identical result tables.
+independent full runs produced identical fold scores, predictions, metrics and p-values
+(only the wall-clock `fit_seconds` timings differ).
 
 ## 10. Repository layout
 
