@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
+from matplotlib.ticker import MaxNLocator  # noqa: E402
 from sklearn.metrics import confusion_matrix, f1_score  # noqa: E402
 
 from . import config  # noqa: E402
@@ -41,7 +42,7 @@ plt.rcParams.update(
         "axes.labelcolor": INK_2,
         "axes.titlecolor": INK,
         "axes.titlesize": 12,
-        "axes.titleweight": "semibold",
+        "axes.titleweight": "bold",
         "axes.titlelocation": "left",
         "axes.labelsize": 10,
         "axes.grid": True,
@@ -68,6 +69,11 @@ def _save(fig, name: str) -> None:
     config.FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(config.FIGURES_DIR / name)
     plt.close(fig)
+
+
+def _signed(v: float, nd: int = 4) -> str:
+    """Signed fixed-point without a misleading '-0.0000'."""
+    return f"{0.0 if abs(v) < 0.5 * 10**-nd else v:+.{nd}f}"
 
 
 def _subtitle(ax, text: str) -> None:
@@ -161,7 +167,8 @@ def fig_pvalues(res) -> None:
         ax.scatter(t[col].clip(lower=1e-16), y, color=color, marker=marker, s=46, zorder=3,
                    label=label)
     ax.axvline(config.ALPHA, color="#d03b3b", lw=1.2, ls="--")
-    ax.text(config.ALPHA * 1.15, -0.55, "α = 0.05", color="#d03b3b", fontsize=8.5, va="bottom")
+    ax.text(config.ALPHA * 0.85, len(t) - 0.62, "α = 0.05", color="#d03b3b", fontsize=8.5,
+            ha="right", va="bottom")
     ax.set_xscale("log")
     ax.set_yticks(range(len(t)), t["comparison"])
     ax.invert_yaxis()
@@ -192,44 +199,52 @@ def fig_fold_differences(res) -> None:
         ax.text(0.02, 0.95, f"mean {d.mean():+.4f}\n{(d > 0).sum()} wins / {(d < 0).sum()} losses",
                 transform=ax.transAxes, va="top", fontsize=8.5, color=INK_2)
         ax.set_xlabel("Δ macro F1 per fold")
+        ax.xaxis.set_major_locator(MaxNLocator(5, symmetric=True))
         ax.grid(axis="x", visible=False)
     axes[0].set_ylabel("Folds")
     fig.suptitle("Paired per-fold differences (100 folds). Black line = mean, shaded = ±MPD band",
-                 x=0.06, ha="left", fontsize=11.5, fontweight="semibold")
+                 x=0.06, ha="left", fontsize=11.5, fontweight="bold")
     fig.tight_layout()
     _save(fig, "05_paired_fold_differences.png")
 
 
 # ----------------------------------------------------------------------- 6 all metrics
 def fig_all_metrics(res) -> None:
-    s = res.cv.groupby("model")[list(METRICS)].mean().loc[config.MODEL_ORDER]
-    hib = [m for m, (_, h) in METRICS.items() if h]
-    lib = [m for m, (_, h) in METRICS.items() if not h]
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4),
-                                 gridspec_kw={"width_ratios": [2.3, 1]})
-    for ax, metrics, title in [(a1, hib, "Higher is better"), (a2, lib, "Lower is better")]:
-        for j, m in enumerate(metrics):
-            vals = s[m]
-            ax.plot([vals.min(), vals.max()], [j, j], color=GRID, lw=3, zorder=1,
-                    solid_capstyle="round")
-            for model in config.MODEL_ORDER:
-                ax.scatter(vals[model], j, s=60, color=MODEL_COLORS[model], zorder=3,
-                           edgecolor=SURFACE, linewidth=1.5)
-            best = vals.idxmax() if METRICS[m][1] else vals.idxmin()
-            ax.text(vals.max(), j - 0.32,
-                    f"best: {best} {vals[best]:.4f}", fontsize=7.5, color=INK_2, ha="right")
-        ax.set_yticks(range(len(metrics)), [METRICS[m][0] for m in metrics])
-        ax.invert_yaxis()
+    """Small multiples: one panel per metric, each on its own scale."""
+    cv = res.cv
+    mean = cv.groupby("model")[list(METRICS)].mean().loc[config.MODEL_ORDER]
+    sd = cv.groupby("model")[list(METRICS)].std().loc[config.MODEL_ORDER]
+    n = np.sqrt(len(cv) / len(config.MODEL_ORDER))
+    metrics = list(METRICS)
+    ncols = 4
+    nrows = int(np.ceil(len(metrics) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(13, 2.15 * nrows))
+    axes = axes.ravel()
+    for ax, m in zip(axes, metrics):
+        label, higher = METRICS[m]
+        vals, err = mean[m], sd[m] / n  # mean ± standard error across folds (descriptive)
+        best = vals.idxmax() if higher else vals.idxmin()
+        for i, model in enumerate(config.MODEL_ORDER):
+            ax.plot([vals[model] - err[model], vals[model] + err[model]], [i, i],
+                    color=MODEL_COLORS[model], lw=2, alpha=0.6, solid_capstyle="round")
+            ax.scatter(vals[model], i, s=50, color=MODEL_COLORS[model], zorder=3,
+                       edgecolor=SURFACE, linewidth=1.5)
+            ax.text(1.04, i, f"{vals[model]:.4f}" + (" ★" if model == best else ""),
+                    transform=ax.get_yaxis_transform(), va="center", ha="left", fontsize=8.5,
+                    color=INK if model == best else INK_2,
+                    fontweight="bold" if model == best else "normal")
+        ax.set_yticks(range(3), config.MODEL_ORDER if ax in axes[::ncols] else [])
+        ax.set_ylim(2.6, -0.6)
         ax.grid(axis="y", visible=False)
-        ax.set_title(title, fontsize=10.5)
-        pad = (s[metrics].to_numpy().max() - s[metrics].to_numpy().min()) * 0.12
-        ax.set_xlim(s[metrics].to_numpy().min() - pad, s[metrics].to_numpy().max() + pad)
-    for model in config.MODEL_ORDER:
-        a1.scatter([], [], s=60, color=MODEL_COLORS[model], label=model)
-    a1.legend(loc="upper center", bbox_to_anchor=(0.7, -0.1), ncol=3)
-    fig.suptitle("Mean of every metric over 100 CV folds", x=0.02, ha="left",
-                 fontsize=12, fontweight="semibold")
-    fig.tight_layout()
+        ax.tick_params(axis="y", length=0)
+        ax.xaxis.set_major_locator(MaxNLocator(3))
+        ax.set_title(f"{label}  ({'↑' if higher else '↓'} better)", fontsize=10)
+    for ax in axes[len(metrics):]:
+        ax.axis("off")
+    fig.suptitle("Every metric, mean over 100 CV folds (bar = ± standard error, ★ = best). "
+                 "Note: each panel has its own x-scale.",
+                 x=0.01, ha="left", fontsize=12, fontweight="bold")
+    fig.tight_layout(w_pad=5)
     _save(fig, "06_all_metrics_cv_mean.png")
 
 
@@ -248,6 +263,7 @@ def fig_confusion(res) -> None:
         ax.set_xticks(range(len(ds.classes)), ds.classes, rotation=45, ha="right")
         ax.set_yticks(range(len(ds.classes)), ds.classes if m == config.MODEL_ORDER[0] else [])
         ax.grid(False)
+        ax.tick_params(length=0)
         ax.set_title(f"{m} (hold-out macro F1 {res.holdout_metrics.loc[m, 'f1_macro']:.4f})",
                      fontsize=10.5)
         ax.set_xlabel("Predicted")
@@ -255,7 +271,7 @@ def fig_confusion(res) -> None:
             sp.set_visible(False)
     axes[0].set_ylabel("True class")
     fig.suptitle("Hold-out confusion matrices (row-normalised = recall per class)", x=0.02,
-                 ha="left", fontsize=12, fontweight="semibold")
+                 ha="left", fontsize=12, fontweight="bold")
     fig.tight_layout()
     _save(fig, "07_confusion_matrices_holdout.png")
 
@@ -267,26 +283,31 @@ def fig_per_class(res) -> None:
         {m: f1_score(ds.y_holdout, res.holdout_preds[m], average=None) for m in config.MODEL_ORDER},
         index=ds.classes,
     ).sort_values("LogReg")
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(8, 4.6))
+    offsets = dict(zip(config.MODEL_ORDER, [0.22, 0.0, -0.22]))  # legend order, top→bottom
     for j, c in enumerate(f1.index):
-        ax.plot([f1.loc[c].min(), f1.loc[c].max()], [j, j], color=GRID, lw=3, zorder=1)
+        if j % 2 == 0:
+            ax.axhspan(j - 0.45, j + 0.45, color=BAND, zorder=0, lw=0)
         for m in config.MODEL_ORDER:
-            ax.scatter(f1.loc[c, m], j, s=60, color=MODEL_COLORS[m], zorder=3,
-                       edgecolor=SURFACE, linewidth=1.5)
+            ax.plot([0, f1.loc[c, m]], [j + offsets[m]] * 2, color=GRID, lw=1, zorder=1)
+            ax.scatter(f1.loc[c, m], j + offsets[m], s=42, color=MODEL_COLORS[m], zorder=3,
+                       edgecolor=SURFACE, linewidth=1.2)
     ax.set_yticks(range(len(f1)), f1.index)
+    ax.tick_params(axis="y", length=0)
+    ax.set_xlim(f1.to_numpy().min() - 0.01, 1.005)
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("F1 on the hold-out set")
     for m in config.MODEL_ORDER:
         ax.scatter([], [], s=60, color=MODEL_COLORS[m], label=m)
-    ax.legend(loc="lower right")
+    ax.legend(loc="lower right", framealpha=1, frameon=True, facecolor=SURFACE, edgecolor=GRID)
     ax.set_title("Per-class F1: the hard classes are hard for every model", pad=22)
-    _subtitle(ax, "SIRA, DERMASON and BARBUNYA/CALI are confused with each other; BOMBAY is trivially separable.")
+    _subtitle(ax, "Most errors are SIRA↔DERMASON, then BARBUNYA↔CALI. BOMBAY is perfectly separated by every model.")
     _save(fig, "08_per_class_f1_holdout.png")
 
 
 # ----------------------------------------------------------------------- 9 bootstrap
 def fig_bootstrap(res) -> None:
-    fig, axes = plt.subplots(1, 3, figsize=(11, 3.3), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.6), sharey=True)
     ht = res.holdout_tests.set_index("comparison")
     allv = np.concatenate(list(res.bootstrap_dists.values()))
     lim = max(abs(allv.min()), abs(allv.max()), config.MPD) * 1.05
@@ -300,14 +321,14 @@ def fig_bootstrap(res) -> None:
         ax.axvline(0, color=MUTED, lw=1)
         ax.axvline(r.boot_ci_low, color=INK, lw=1.2, ls="--")
         ax.axvline(r.boot_ci_high, color=INK, lw=1.2, ls="--")
-        ax.set_title(f"{m1} − {m2}", fontsize=10.5)
-        ax.text(0.02, 0.95, f"Δ {r.macro_f1_diff:+.4f}\n95% CI [{r.boot_ci_low:+.4f}, {r.boot_ci_high:+.4f}]",
-                transform=ax.transAxes, va="top", fontsize=8.5, color=INK_2)
+        ax.set_title(f"{m1} − {m2}\nΔ {_signed(r.macro_f1_diff)}, 95% CI [{_signed(r.boot_ci_low)}, {_signed(r.boot_ci_high)}]",
+                     fontsize=10)
         ax.set_xlabel("Δ macro F1 (hold-out)")
+        ax.xaxis.set_major_locator(MaxNLocator(5, symmetric=True))
         ax.grid(axis="x", visible=False)
     axes[0].set_ylabel("Bootstrap resamples")
     fig.suptitle(f"Paired bootstrap on the hold-out set ({res.meta['n_bootstrap']:,} resamples). Dashed = 95% CI",
-                 x=0.06, ha="left", fontsize=11.5, fontweight="semibold")
+                 x=0.06, ha="left", fontsize=11.5, fontweight="bold")
     fig.tight_layout()
     _save(fig, "09_bootstrap_holdout.png")
 
@@ -323,12 +344,11 @@ def fig_mcnemar(res) -> None:
                 va="center", fontsize=8.5, color=INK_2)
         ax.text(r.only_2_correct + 1, i + 0.18, f"only {r.model_2} right: {r.only_2_correct}",
                 va="center", fontsize=8.5, color=INK_2)
-        ax.text(-2, i, f"p = {r.p_mcnemar:.3f}", ha="right", va="center", fontsize=8.5,
-                color=INK, transform=ax.transData)
     m = max(ht.only_1_correct.max(), ht.only_2_correct.max())
     ax.set_xlim(0, m * 1.75)
-    ax.set_yticks(range(len(ht)), [f"{c}\n" for c in ht.comparison])
-    ax.tick_params(axis="y", pad=58)
+    ax.set_yticks(range(len(ht)), [f"{r.comparison}\nexact p = {r.p_mcnemar:.3f}"
+                                   for r in ht.itertuples()])
+    ax.tick_params(axis="y", length=0)
     ax.invert_yaxis()
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("Hold-out samples (discordant pairs only)")

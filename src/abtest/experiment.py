@@ -97,13 +97,16 @@ class Results:
 def _decide(row: pd.Series) -> str:
     sig = row["p_holm"] < config.ALPHA
     big = abs(row["mean_diff"]) >= config.MPD
+    winner = row["model_1"] if row["mean_diff"] > 0 else row["model_2"]
     if sig and big:
-        winner = row["model_1"] if row["mean_diff"] > 0 else row["model_2"]
         return f"Prefer {winner} (significant and ≥ MPD)"
+    if sig and row["tost_equivalent"]:
+        return (f"{winner} is significantly better, but by < MPD and TOST-equivalent "
+                "→ practically equivalent")
     if row["tost_equivalent"]:
-        return "Practically equivalent (TOST) → prefer simpler / cheaper model"
+        return "Not significant and TOST-equivalent → practically equivalent"
     if sig:
-        return "Significant but below MPD → not practically meaningful"
+        return f"{winner} significantly better, but by < MPD → not practically meaningful"
     return "No significant difference, equivalence not shown → inconclusive"
 
 
