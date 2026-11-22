@@ -100,3 +100,11 @@ column-by-column against the committed first run). The only differences are the 
   clearest difference found here.
 - Tune all three arms with nested CV and re-run the same pre-registered test battery.
 - Repeat on more datasets and compare the algorithms with Friedman + Nemenyi tests (Demšar, 2006).
+
+## 2026-11-22: Blog published
+
+- Published on Medium: https://medium.com/@akhilkommuru98/your-model-comparison-is-probably-lying-to-you-9af0b7a3a03c
+- Added `docs/medium_post.html`, a paste-ready version of the post. Medium has no table support, so tables are
+  fixed-width blocks, and figures are linked from this repo.
+- Linked the post from the README, the blog source and the plan's deliverables table.
+

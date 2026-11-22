@@ -97,7 +97,7 @@ Effect sizes: mean difference, 95% CI (with corrected variance), and Cohen's d_z
 | Deliverable | Location |
 |---|---|
 | Report (GitHub) | [`README.md`](../README.md) |
-| Blog post draft (Medium-ready) | [`docs/BLOG_POST.md`](BLOG_POST.md) |
+| Blog post (published on Medium) | [Medium](https://medium.com/@akhilkommuru98/your-model-comparison-is-probably-lying-to-you-9af0b7a3a03c) · source: [`docs/BLOG_POST.md`](BLOG_POST.md) |
 | Methodology deep dive | [`docs/METHODOLOGY.md`](METHODOLOGY.md) |
 | Work log / decisions | [`docs/WORKLOG.md`](WORKLOG.md) |
 | Reproducible pipeline | `src/abtest/`, `scripts/run_experiment.py`, `Makefile` |

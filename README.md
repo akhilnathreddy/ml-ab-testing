@@ -11,6 +11,7 @@ common way of comparing models (a paired t-test on CV folds) gets the answer wro
 | **Primary metric** | Macro F1 (pre-registered) |
 | **Tests** | Corrected resampled t-test (primary) · 5×2cv t / F · McNemar · paired bootstrap · TOST equivalence · Holm correction |
 | **Decision threshold** | Significant (Holm α = 0.05) **and** ≥ 1 pp macro-F1 improvement |
+| **Blog post** | 📝 [Read it on Medium: *Your Model Comparison Is Probably Lying to You*](https://medium.com/@akhilkommuru98/your-model-comparison-is-probably-lying-to-you-9af0b7a3a03c) |
 | **Docs** | [Plan](docs/PLAN.md) · [Methodology](docs/METHODOLOGY.md) · [Work log](docs/WORKLOG.md) · [Blog post](docs/BLOG_POST.md) · [Notebook](notebooks/analysis.ipynb) |
 
 ---

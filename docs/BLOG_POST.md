@@ -2,6 +2,8 @@
 
 *How a "p = 0.00000000001" win for LightGBM turned into "just ship the logistic regression."*
 
+> **Published on Medium:** https://medium.com/@akhilkommuru98/your-model-comparison-is-probably-lying-to-you-9af0b7a3a03c
+>
 > **Code, data pipeline, and full report:** https://github.com/akhilnathreddy/ml-ab-testing
 
 ---
