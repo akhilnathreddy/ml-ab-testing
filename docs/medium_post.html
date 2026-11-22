@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Model Comparison Is Probably Lying to You</title>
+<style>
+  body { max-width: 720px; margin: 40px auto; padding: 0 16px; font-family: Georgia, serif;
+         font-size: 19px; line-height: 1.6; color: #1a1a1a; background: #fff; }
+  h1 { font-family: Helvetica, Arial, sans-serif; font-size: 38px; line-height: 1.2; margin-bottom: 8px; }
+  h2 { font-family: Helvetica, Arial, sans-serif; font-size: 26px; margin-top: 40px; }
+  h3 { font-family: Helvetica, Arial, sans-serif; font-size: 20px; color: #555; font-weight: normal; margin-top: 0; }
+  img { max-width: 100%; }
+  figure { margin: 28px 0; }
+  figcaption { font-size: 14px; color: #666; text-align: center; margin-top: 6px; }
+  pre { background: #f2f2f2; padding: 14px; font-size: 14px; line-height: 1.45; overflow-x: auto; }
+  blockquote { border-left: 3px solid #1a1a1a; margin-left: 0; padding-left: 18px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Your Model Comparison Is Probably Lying to You</h1>
+<h3>How a “p = 0.00000000001” win for LightGBM turned into “just ship the logistic regression” — an A/B test of three classifiers, done properly.</h3>
+
+<figure>
+<img src="https://raw.githubusercontent.com/akhilnathreddy/ml-ab-testing/main/results/figures/04_pvalues_by_test.png" alt="p-values from three different tests on the same model comparison">
+<figcaption>Same data, three tests, wildly different p-values. This post explains why.</figcaption>
+</figure>
+
+<p>Every data team has had this conversation:</p>
+
+<blockquote>“The new gradient-boosted model scores 94.1% macro-F1 in cross-validation. The old logistic regression gets 93.7%. And the t-test on the folds says p &lt; 0.001. Let’s ship it.”</blockquote>
+
+<p>It sounds rigorous: cross-validation, a statistical test, a tiny p-value. But almost every part of that reasoning is shaky. In this post I run a <strong>proper A/B test between three classifiers</strong>, show exactly where the naive approach breaks, and end up with a very different recommendation.</p>
+
+<p>All code, data pipeline, tests and the full report are open source: <a href="https://github.com/akhilnathreddy/ml-ab-testing">github.com/akhilnathreddy/ml-ab-testing</a></p>
+
+<h2>The setup: three models, one benchmark, rules written in advance</h2>
+
+<p><strong>The dataset.</strong> The <a href="https://archive.ics.uci.edu/dataset/602/dry+bean+dataset">Dry Bean dataset</a> from UCI has 13,611 images of dry beans reduced to 16 shape features (area, perimeter, roundness, …). The task is to classify them into <strong>7 varieties</strong>. It’s a good benchmark for this because:</p>
+<ul>
+<li>It’s multi-class and <strong>imbalanced</strong> (the largest class is 6.8× the smallest), so macro-F1 matters.</li>
+<li>It isn’t saturated. Unlike Iris or Wine, the models don’t all score 99%, so there’s something to test.</li>
+</ul>
+
+<p><strong>The three arms of the test:</strong></p>
+<ul>
+<li><strong>A (control):</strong> Logistic Regression, with feature scaling</li>
+<li><strong>B:</strong> Random Forest, 500 trees</li>
+<li><strong>C:</strong> LightGBM, 400 boosted trees</li>
+</ul>
+
+<p><strong>Pre-registration.</strong> Before training anything, I wrote down the rules (they’re in the repo’s <a href="https://github.com/akhilnathreddy/ml-ab-testing/blob/main/docs/PLAN.md">PLAN.md</a>):</p>
+<ul>
+<li><strong>Primary metric:</strong> macro-F1</li>
+<li><strong>Significance level:</strong> α = 0.05, with Holm correction for the 3 pairwise comparisons</li>
+<li><strong>Smallest difference worth caring about:</strong> 1 percentage point</li>
+<li><strong>Decision rule:</strong> switch from the control only if a challenger is <em>both</em> statistically significant <em>and</em> at least 1 pp better. If the models are provably equivalent, pick the simpler one.</li>
+</ul>
+
+<p>This step is not bureaucracy. Without it, every number you see afterwards invites you to move the goalposts.</p>
+
+<p><strong>One data-hygiene catch:</strong> the raw file contains <strong>68 exact duplicate rows</strong>, all of them HOROZ beans. If you don’t drop them, the same bean can sit in both a training fold and a test fold, which quietly inflates every score.</p>
+
+<h2>Step 1: Cross-validate, and pair the comparison</h2>
+
+<p>I used 10×10 repeated stratified cross-validation on 80% of the data, which gives 100 test folds. Crucially, <strong>every model sees exactly the same folds</strong>. That makes this a <em>paired</em> experiment, like testing two running shoes on the same runner instead of on different runners.</p>
+
+<figure>
+<img src="https://raw.githubusercontent.com/akhilnathreddy/ml-ab-testing/main/results/figures/02_cv_macro_f1_by_model.png" alt="Macro-F1 on each of 100 test folds for the three models">
+<figcaption>Each dot is one test fold. The spread between folds is bigger than the gap between models.</figcaption>
+</figure>
+
+<p>Look at the spread. The difference <em>between folds</em> (sd ≈ 0.7 pp) is bigger than the difference <em>between models</em> (at most 0.4 pp). Comparing averages alone would tell you nothing. But because the folds are shared, we can look at the <strong>per-fold difference</strong>, which cancels out “this fold was just hard”:</p>
+
+<figure>
+<img src="https://raw.githubusercontent.com/akhilnathreddy/ml-ab-testing/main/results/figures/05_paired_fold_differences.png" alt="Histograms of per-fold differences in macro-F1 for each pair of models">
+<figcaption>Paired per-fold differences. Black line = mean, shaded band = ±1 pp.</figcaption>
+</figure>
+
+<p>LightGBM beats Logistic Regression on 81 of 100 folds and Random Forest on 79. Random Forest vs Logistic Regression is a coin flip (46 vs 54).</p>
+
+<h2>Step 2: The trap — the naive paired t-test</h2>
+
+<p>The obvious move is <code>scipy.stats.ttest_rel(lgbm_scores, logreg_scores)</code>. Here’s what it says (Holm-corrected):</p>
+
+<pre>                    Δ macro-F1   naive p (Holm)
+LightGBM − LogReg     +0.43 pp   1.3 × 10⁻¹¹
+LightGBM − RF         +0.42 pp   4.0 × 10⁻¹³</pre>
+
+<p>Case closed? No. <strong>This test is invalid for cross-validation scores.</strong> A t-test assumes the 100 numbers are independent. But in 10-fold CV, any two training sets share about <strong>89% of their rows</strong>, so the scores are strongly correlated. The test sees 100 data points when it has far less independent information than that. The variance is underestimated, and the p-value is absurdly small.</p>
+
+<p>Dietterich showed back in 1998 that this test’s false-positive rate is far above 5%. Adding more CV repeats makes it <em>worse</em>: you can push p toward zero just by running more folds.</p>
+
+<h2>Step 3: Tests that respect the dependence</h2>
+
+<p><strong>1. The corrected resampled t-test</strong> (Nadeau &amp; Bengio, 2003). It’s the same t-statistic, but the variance is inflated to account for the overlap between training sets:</p>
+
+<pre>t = mean(d) / sqrt( (1/J + n_test/n_train) · var(d) )</pre>
+
+<p>With J = 100 folds and n_test/n_train ≈ 0.111, the variance multiplier goes from 0.01 to 0.121, so the standard error grows about <strong>3.5×</strong>.</p>
+
+<p><strong>2. The 5×2cv t-test</strong> (Dietterich, 1998) and <strong>Alpaydin’s combined F-test</strong>. These use five repeats of 2-fold CV. The two halves never overlap, so the false-positive rate stays honest. The price is lower power.</p>
+
+<p>Same data, very different conclusions:</p>
+
+<pre>                    Δ (pp)   95% CI (pp)      p (Holm)
+RF − LogReg          +0.01   [−0.32, +0.34]   0.952
+LightGBM − LogReg    +0.43   [+0.05, +0.80]   0.055
+LightGBM − RF        +0.42   [+0.08, +0.75]   0.046</pre>
+
+<p>The 5×2cv test gives Holm-corrected p-values of 0.553, 0.245 and 0.002 for the same three pairs.</p>
+
+<p>The “ten orders of magnitude” win over Logistic Regression is gone: p = 0.055 after correction. LightGBM’s edge over Random Forest survives (p = 0.046), and 5×2cv agrees.</p>
+
+<figure>
+<img src="https://raw.githubusercontent.com/akhilnathreddy/ml-ab-testing/main/results/figures/03_forest_plot_differences.png" alt="Forest plot of mean differences with corrected and naive confidence intervals">
+<figcaption>Black = honest (corrected) 95% confidence intervals. Grey = naive intervals, far too narrow. Shaded = ±1 pp.</figcaption>
+</figure>
+
+<h2>Step 4: “Not significant” ≠ “the same”</h2>
+
+<p>A non-significant result might just mean the test lacked power. To claim the models are <em>practically the same</em>, you have to flip the hypotheses. That’s what an equivalence test does — <strong>TOST</strong> (two one-sided tests):</p>
+<ul>
+<li>H₀: the difference is at least 1 pp in either direction</li>
+<li>H₁: the difference is within ±1 pp</li>
+</ul>
+
+<pre>                    90% CI (pp)       TOST p   Equivalent?
+RF − LogReg         [−0.27, +0.29]    2e-8     yes
+LightGBM − LogReg   [+0.11, +0.74]    0.002    yes
+LightGBM − RF       [+0.14, +0.70]    0.0004   yes</pre>
+
+<p>This is the most useful result in the whole analysis. <strong>We can confidently rule out that LightGBM is ≥ 1 pp better than either alternative.</strong></p>
+
+<p>And it’s not a contradiction that LightGBM vs Random Forest is both “significant” and “equivalent”. The difference is <em>real</em>, and it is <em>small</em>.</p>
+
+<h2>Step 5: The hold-out set, and a ranking that flips</h2>
+
+<p>The remaining 20% of the data (2,709 beans) was untouched until the very end. I fit each model once and ran two more tests:</p>
+<ul>
+<li><strong>McNemar’s test</strong> looks only at beans where the two models <em>disagree</em>. If neither model is better, a disagreement should go either way 50/50.</li>
+<li>A <strong>paired bootstrap</strong> resamples the test set 10,000 times and recomputes the macro-F1 difference each time.</li>
+</ul>
+
+<figure>
+<img src="https://raw.githubusercontent.com/akhilnathreddy/ml-ab-testing/main/results/figures/10_mcnemar_discordant_pairs.png" alt="Counts of hold-out beans where only one of two models was right">
+<figcaption>Where the models disagree on unseen data, it’s close to a coin flip every time.</figcaption>
+</figure>
+
+<pre>                 LogReg   RF       LightGBM
+Hold-out F1      0.9302   0.9302   0.9286</pre>
+
+<p><strong>LightGBM came last.</strong> None of the differences is significant (McNemar p between 0.28 and 1.0), and every bootstrap confidence interval contains zero.</p>
+
+<p>That’s no paradox. A 2.7k-sample test set has a macro-F1 noise band of about ±0.6 pp, which is larger than the true gap of about 0.4 pp. <strong>If you choose models from a single train/test split, you’re partly choosing by coin flip.</strong></p>
+
+<h2>Step 6: Look beyond the headline metric</h2>
+
+<p>I ran the corrected test on all 11 metrics as an exploratory check. One stood out — <strong>log loss</strong>, which measures the quality of the predicted probabilities (lower is better):</p>
+
+<pre>                 LogReg   RF       LightGBM
+Log loss (CV)    0.214    0.275    0.340</pre>
+
+<p>All three pairwise log-loss differences are highly significant. The tree ensembles, especially boosting, are <strong>over-confident</strong>. If anything downstream uses the probabilities — thresholds, expected-cost decisions, ranking — that matters far more than 0.4 pp of F1.</p>
+
+<p>A note on <strong>Hamming loss</strong>, which is often reported for this kind of task: for single-label multi-class problems it is <em>identically</em> 1 − accuracy (here 0.0753 vs an accuracy of 0.9247). Report it if you’re asked to, but don’t count it as separate evidence.</p>
+
+<h2>The verdict</h2>
+
+<pre>                    Significant?   ≥ 1 pp?   Equivalent?
+RF vs LogReg        no  (0.952)    no        yes
+LightGBM vs LogReg  no  (0.055)    no        yes
+LightGBM vs RF      yes (0.046)    no        yes</pre>
+
+<p><strong>Ship the Logistic Regression.</strong> It is practically as accurate as the alternatives, has the best-calibrated probabilities, trains about 70× faster than the forest, and you can read its coefficients.</p>
+
+<h2>Five takeaways for your next model comparison</h2>
+<ol>
+<li><strong>Write the decision rule first:</strong> the metric, α, and the smallest difference you care about.</li>
+<li><strong>Pair your comparisons.</strong> Use the same folds for every model, and test the differences.</li>
+<li><strong>Never run a plain t-test on CV folds.</strong> Use the Nadeau–Bengio correction or 5×2cv.</li>
+<li><strong>Separate “significant” from “meaningful”.</strong> Add an equivalence test, and correct for multiple comparisons.</li>
+<li><strong>Look at calibration and cost</strong>, not just the headline score.</li>
+</ol>
+
+<p>Everything is open source, including unit tests that check the statistics against <code>mlxtend</code> and <code>scipy</code>, and the whole experiment re-runs with one command: <a href="https://github.com/akhilnathreddy/ml-ab-testing">github.com/akhilnathreddy/ml-ab-testing</a></p>
+
+<h2>References</h2>
+<ul>
+<li>Nadeau &amp; Bengio (2003). Inference for the Generalization Error. <em>Machine Learning</em> 52.</li>
+<li>Bouckaert &amp; Frank (2004). Evaluating the Replicability of Significance Tests for Comparing Learning Algorithms. <em>PAKDD</em>.</li>
+<li>Dietterich (1998). Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms. <em>Neural Computation</em> 10(7).</li>
+<li>Alpaydin (1999). Combined 5×2 cv F Test for Comparing Supervised Classification Learning Algorithms. <em>Neural Computation</em> 11(8).</li>
+<li>Demšar (2006). Statistical Comparisons of Classifiers over Multiple Data Sets. <em>JMLR</em> 7.</li>
+<li>Koklu &amp; Ozkan (2020). Multiclass classification of dry beans using computer vision and machine learning techniques. <em>Computers and Electronics in Agriculture</em> 174.</li>
+</ul>
+
+</body>
+</html>
