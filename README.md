@@ -254,10 +254,35 @@ independent full runs produced identical fold scores, predictions, metrics and p
 
 ## References
 
-- Nadeau & Bengio (2003). *Inference for the Generalization Error.* Machine Learning 52.
-- Bouckaert & Frank (2004). *Evaluating the Replicability of Significance Tests for Comparing Learning Algorithms.* PAKDD.
-- Dietterich (1998). *Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms.* Neural Computation 10(7).
-- Alpaydin (1999). *Combined 5×2 cv F Test for Comparing Supervised Classification Learning Algorithms.* Neural Computation 11(8).
-- McNemar (1947). Psychometrika 12(2). · Schuirmann (1987), TOST. · Holm (1979), Scand. J. Statistics 6(2).
-- Demšar (2006). *Statistical Comparisons of Classifiers over Multiple Data Sets.* JMLR 7.
-- Koklu & Ozkan (2020). *Multiclass classification of dry beans using computer vision and machine learning techniques.* Computers and Electronics in Agriculture 174. Dataset: CC BY 4.0.
+### This project
+- **Blog post:** [*Your Model Comparison Is Probably Lying to You*](https://medium.com/@akhilkommuru98/your-model-comparison-is-probably-lying-to-you-9af0b7a3a03c), Medium, 2026.
+- **Code, data pipeline and results:** <https://github.com/akhilnathreddy/ml-ab-testing>
+
+### Dataset
+1. Koklu, M. & Ozkan, I. A. (2020). Multiclass classification of dry beans using computer vision and machine learning techniques. *Computers and Electronics in Agriculture*, 174, 105507. <https://doi.org/10.1016/j.compag.2020.105507>
+2. Dry Bean [Dataset] (2020). UCI Machine Learning Repository. <https://doi.org/10.24432/C50S4B>. Licensed CC BY 4.0.
+
+### Statistical methods
+3. Nadeau, C. & Bengio, Y. (2003). Inference for the generalization error. *Machine Learning*, 52(3), 239–281. <https://doi.org/10.1023/A:1024068626366>. **Corrected resampled t-test (primary test).**
+4. Bouckaert, R. R. & Frank, E. (2004). Evaluating the replicability of significance tests for comparing learning algorithms. In *Advances in Knowledge Discovery and Data Mining (PAKDD 2004)*, LNCS 3056, 3–12. <https://doi.org/10.1007/978-3-540-24775-3_3>. **Corrected test for repeated k-fold CV.**
+5. Dietterich, T. G. (1998). Approximate statistical tests for comparing supervised classification learning algorithms. *Neural Computation*, 10(7), 1895–1923. <https://doi.org/10.1162/089976698300017197>. **5×2cv paired t-test; why the naive CV t-test fails.**
+6. Alpaydin, E. (1999). Combined 5 × 2 cv *F* test for comparing supervised classification learning algorithms. *Neural Computation*, 11(8), 1885–1892. <https://doi.org/10.1162/089976699300016007>. **Combined 5×2cv F-test.**
+7. McNemar, Q. (1947). Note on the sampling error of the difference between correlated proportions or percentages. *Psychometrika*, 12(2), 153–157. <https://doi.org/10.1007/BF02295996>. **McNemar's test.**
+8. Schuirmann, D. J. (1987). A comparison of the two one-sided tests procedure and the power approach for assessing the equivalence of average bioavailability. *Journal of Pharmacokinetics and Biopharmaceutics*, 15(6), 657–680. <https://doi.org/10.1007/BF01068419>. **TOST equivalence test.**
+9. Holm, S. (1979). A simple sequentially rejective multiple test procedure. *Scandinavian Journal of Statistics*, 6(2), 65–70. <https://www.jstor.org/stable/4615733>. **Holm–Bonferroni correction.**
+10. Demšar, J. (2006). Statistical comparisons of classifiers over multiple data sets. *Journal of Machine Learning Research*, 7, 1–30. <https://jmlr.org/papers/v7/demsar06a.html>. **Multi-dataset comparisons (see Limitations).**
+
+### Software
+[scikit-learn](https://scikit-learn.org) · [LightGBM](https://lightgbm.readthedocs.io) · [SciPy](https://scipy.org) · [statsmodels](https://www.statsmodels.org) · [mlxtend](https://rasbt.github.io/mlxtend/) (reference implementation for the 5×2cv tests) · [pandas](https://pandas.pydata.org) · [Matplotlib](https://matplotlib.org). Exact versions are in [`requirements.txt`](requirements.txt).
+
+### How to cite this project
+
+```bibtex
+@misc{akhilnathreddy2026mlabtesting,
+  author       = {akhilnathreddy},
+  title        = {A/B Testing ML Models the Right Way: Logistic Regression vs Random Forest vs LightGBM on Dry Bean},
+  year         = {2026},
+  howpublished = {\url{https://github.com/akhilnathreddy/ml-ab-testing}},
+  note         = {Blog post: https://medium.com/@akhilkommuru98/your-model-comparison-is-probably-lying-to-you-9af0b7a3a03c}
+}
+```
